@@ -17,7 +17,7 @@ scanned_wallet_counter = 0
 def generate_random_private_key() -> str:
     private_key_chars = []
     for index in range(64):
-        private_key_chars.append(random.choice(string.hexdigits))
+        private_key_chars.append(random.choice(string.hexdigits).upper())
     return ''.join(private_key_chars)
 
 
@@ -26,19 +26,19 @@ def randomly_change_n_chars(word, n) -> str:
     word = list(word)
     random_indexes = random.sample(range(0, length), n)
     for random_index in random_indexes:
-        word[random_index] = random.choice(string.hexdigits)
+        word[random_index] = random.choice(string.hexdigits).upper()
     return ''.join(word)
 
 
 def shift_adjusment(char, shift):
     raw_ascii_code = ord(char) + shift
-    if (48 <= raw_ascii_code <= 57) or (65 <= raw_ascii_code <= 70):
+    if (ord('0') <= raw_ascii_code <= ord('9')) or (ord('A') <= raw_ascii_code <= ord('F')):
         return chr(raw_ascii_code)
-    if raw_ascii_code > 70:
-        overflow = raw_ascii_code - 71
+    if raw_ascii_code > ord('F'):
+        overflow = raw_ascii_code - ord('F') - 1
         return shift_adjusment('0', overflow)
-    if raw_ascii_code > 57:
-        overflow = raw_ascii_code - 58
+    if raw_ascii_code > ord('9'):
+        overflow = raw_ascii_code - ord('9') - 1
         return shift_adjusment('A', overflow)
     raise "INVALID STATE"
 
