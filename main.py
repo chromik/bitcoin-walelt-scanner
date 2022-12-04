@@ -183,18 +183,18 @@ def main() -> None:
     #     '14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn'
     # )
 
-    find_wallet_private_key(
-        lambda: generate_shifted_private_key(
-            'AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009'),
-
-        # https://live.blockcypher.com/btc/address/14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn/
-        '14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn'
-    )
-
-    # try to find address with non-zero balance by generating completely random private keys and checking their balances
     # find_wallet_private_key(
-    #     lambda: generate_random_private_key()
+    #     lambda: generate_shifted_private_key(
+    #         'AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009'),
+    #
+    #     # https://live.blockcypher.com/btc/address/14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn/
+    #     '14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn'
     # )
+
+    #try to find address with non-zero balance by generating completely random private keys and checking their balances
+    find_wallet_private_key(
+        lambda: generate_random_private_key()
+    )
 
 
 if __name__ == '__main__':
