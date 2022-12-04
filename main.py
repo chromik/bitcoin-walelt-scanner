@@ -30,6 +30,30 @@ def randomly_change_n_chars(word, n) -> str:
     return ''.join(word)
 
 
+def shift_adjusment(char, shift):
+    raw_ascii_code = ord(char) + shift
+    if (48 <= raw_ascii_code <= 57) or (65 <= raw_ascii_code <= 70):
+        return chr(raw_ascii_code)
+    if raw_ascii_code > 70:
+        overflow = raw_ascii_code - 71
+        return shift_adjusment('0', overflow)
+    if raw_ascii_code > 57:
+        overflow = raw_ascii_code - 58
+        return shift_adjusment('A', overflow)
+    raise "INVALID STATE"
+
+
+def generate_shifted_private_key(word) -> str:
+    length = len(word)
+    word = list(word)
+
+    shift = random.randint(1, 15)
+
+    for index in range(0, length):
+        word[index] = shift_adjusment(word[index], shift)
+    return ''.join(word)
+
+
 def generate_address(private_key):
     private_key_bytes = codecs.decode(private_key, 'hex')
     # Generating a public key in bytes using Secp256k1 & ECDSA (Elliptic Curve Digital Signature Algorithm) library
@@ -151,18 +175,26 @@ async def scan_balances(wallets) -> None:
 def main() -> None:
     # https://www.dropbox.com/sh/x7l8hy3ibjsd4h4/AACWUNJnV4vVLr5UzOCBxh34a?dl=0&preview=communication+with+the+Jaxx+Liberty+support+(2).docx
     # https://www.dropbox.com/sh/x7l8hy3ibjsd4h4/AACWUNJnV4vVLr5UzOCBxh34a?dl=0&preview=addresses+and+keys.txt
+    # find_wallet_private_key(
+    #     lambda: randomly_change_n_chars(
+    #         'AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009', random.randint(1, 64)),
+    #
+    #     # https://live.blockcypher.com/btc/address/14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn/
+    #     '14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn'
+    # )
+
     find_wallet_private_key(
-        lambda: randomly_change_n_chars(
-            'AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009', random.randint(1, 64)),
+        lambda: generate_shifted_private_key(
+            'AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009'),
 
         # https://live.blockcypher.com/btc/address/14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn/
         '14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn'
     )
 
     # try to find address with non-zero balance by generating completely random private keys and checking their balances
-    find_wallet_private_key(
-        lambda: generate_random_private_key()
-    )
+    # find_wallet_private_key(
+    #     lambda: generate_random_private_key()
+    # )
 
 
 if __name__ == '__main__':
