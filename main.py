@@ -9,17 +9,19 @@ import base58
 import ecdsa
 
 REQUEST_BATCH_SIZE = 1000
-BTC_IN_SATOSHI = 100_000_000
+SATOSHI_IN_BTC = 100_000_000
+
+scanned_wallet_counter = 0
 
 
-def generate_private_key():
+def generate_random_private_key() -> str:
     private_key_chars = []
     for index in range(64):
         private_key_chars.append(random.choice(string.hexdigits))
     return ''.join(private_key_chars)
 
 
-def randomly_change_n_chars(word, n):
+def randomly_change_n_chars(word, n) -> str:
     length = len(word)
     word = list(word)
     random_indexes = random.sample(range(0, length), n)
@@ -81,21 +83,35 @@ def generate_wallet(function_generate_private_key) -> tuple:
     return generate_address(private_key), private_key
 
 
-def find_wallet_private_key(function_generate_private_key, expected_address=None):
-    wallets = []
+def check_is_expected_address(wallet, expected_address) -> None:
+    global scanned_wallet_counter
+    scanned_wallet_counter += 1
+    print(f'{scanned_wallet_counter}: {{"private_key": "{wallet[1]}", "public_address": "{wallet[0]}"}}')
+    if wallet[1] == expected_address:
+        print(f'Private key for address "{expected_address}" was found: {wallet[0]}')
+        exit(0)
 
+
+def find_wallet_private_key(function_generate_private_key, expected_address=None) -> None:
+    """Try to find private key which matches to the expected_address or have non-zero balance
+    Parameters
+    ----------
+    function_generate_private_key: lambda
+        lambda function returning private key
+    expected_address : str
+        1) address is given - generates private keys until key for given address is found
+        2) address is not given - generates private keys until key for address with non-zero balance is found
+    """
+    wallets = []
     while True:
         wallet = generate_wallet(function_generate_private_key)
-
-        if wallet[1] == expected_address:
-            print(f'Private key for address "{expected_address}" was found: {wallet[0]}')
-            exit(0)
-
-        wallets.append(wallet)
-
-        if len(wallets) == REQUEST_BATCH_SIZE:
-            asyncio.run(scan_balances(wallets))
-            wallets.clear()
+        if expected_address is None:
+            wallets.append(wallet)
+            if len(wallets) == REQUEST_BATCH_SIZE:
+                asyncio.run(scan_balances(wallets))
+                wallets.clear()
+        else:
+            check_is_expected_address(wallet, expected_address)
 
 
 async def get(url, session):
@@ -104,47 +120,50 @@ async def get(url, session):
             return await response.read()
 
     except Exception as e:
-        print("Unable to get url {} due to {}.".format(url, e.__class__))
+        print("Unable to get url {} due to {}".format(url, e.__class__))
 
 
-def get_private_key(wallets, address):
+def get_private_key(wallets, address) -> str:
     wallet = list(filter(lambda x: x[0] == address, wallets))[0]
     return wallet[1]
 
 
-async def scan_balances(wallets):
-    scanned_wallet_counter = 0
-
+async def scan_balances(wallets) -> None:
+    global scanned_wallet_counter
     async with aiohttp.ClientSession() as session:
-        wallet_balances = await asyncio.gather(
+        responses = await asyncio.gather(
             *[get(f"https://blockstream.info/api/address/{wallet[0]}", session) for wallet in wallets])
 
-    wallet_balances = list(map(lambda x: json.loads(x), wallet_balances))
+    json_responses = list(map(lambda response: json.loads(response), responses))
 
-    for wallet_balance in wallet_balances:
+    for json_response in json_responses:
         scanned_wallet_counter += 1
-        address = wallet_balance['address']
-        balance = wallet_balance['chain_stats']['funded_txo_sum'] / BTC_IN_SATOSHI
-        print(f"[{scanned_wallet_counter}] address: {address}, balance: {balance} BTC")
-        if balance > 0.0:
+        address = json_response['address']
+        balance_in_satoshi = json_response['chain_stats']['funded_txo_sum']
+        print(f'{scanned_wallet_counter}: '
+              f'{{"public_address": "{address}", '
+              f'"balance": {{"value": "{balance_in_satoshi / SATOSHI_IN_BTC}", "currency": "BTC"}}}}')
+        if balance_in_satoshi > 0:
             print(f"Matching private key: {get_private_key(wallets, address)}")
             exit(0)  # wallet found
 
 
-if __name__ == '__main__':
-    # try to find similar address with similar private key and non-zero balance
-    # find_wallet_private_key(
-    #     lambda: randomly_change_n_chars('AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009', 1),
-    # )
-
-    # try to find similar address with similar private key and non-zero balance or until private key is found
-    # for given address
+def main() -> None:
+    # https://www.dropbox.com/sh/x7l8hy3ibjsd4h4/AACWUNJnV4vVLr5UzOCBxh34a?dl=0&preview=communication+with+the+Jaxx+Liberty+support+(2).docx
+    # https://www.dropbox.com/sh/x7l8hy3ibjsd4h4/AACWUNJnV4vVLr5UzOCBxh34a?dl=0&preview=addresses+and+keys.txt
     find_wallet_private_key(
-        lambda: randomly_change_n_chars('AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009', 2),
-        'kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn'
+        lambda: randomly_change_n_chars(
+            'AD5E22D3435A443D103BF983077F2756AB7F27974A32A688749E9B50D48C0009', random.randint(1, 64)),
+
+        # https://live.blockcypher.com/btc/address/14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn/
+        '14kCwWrLQNv4JZPUeYeJ1R8RxysY8MAUBn'
     )
 
     # try to find address with non-zero balance by generating completely random private keys and checking their balances
-    # find_wallet_private_key(
-    #     lambda: generate_private_key()
-    # )
+    find_wallet_private_key(
+        lambda: generate_random_private_key()
+    )
+
+
+if __name__ == '__main__':
+    main()
